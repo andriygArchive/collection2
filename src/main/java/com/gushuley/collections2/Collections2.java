@@ -4,34 +4,17 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public class Collections2 {
-
-	static final Iterator<?> EMPTY_ITERATOR = new Iterator<Object>() {
-
-		@Override
-		public boolean hasNext() {
-			return false;
-		}
-
-		@Override
-		public Object next() {
-			throw new NoSuchElementException( "emptyIterator" );
-		}
-
-		@Override
-		public void remove() {
-			throw new IllegalStateException( "emptyIterator" );
-		}
-	};
-
-	@SuppressWarnings( "unchecked" )
 	final static <E> Set2<E> emptySet() {
-		return (Set2<E>)LinkedSet2.EMPTY;
-	}
-
-	@SuppressWarnings( "unchecked" )
-	public static <E> Iterator<E> emptyIterator() {
-		return (Iterator<E>)EMPTY_ITERATOR;
+		return LinkedSet2.emptySet();
 	}
 
 	final static  Object[] EMPTY_ARRAY = {};
+
+	public static <T> Set2<T> linkedSet() {
+		return LinkedSet2.emptySet();
+	}
+
+	static UnsupportedOperationException collectionIsCopyOnWrite( String name, String replacementOperation ) throws UnsupportedOperationException {
+		throw new UnsupportedOperationException( name + " is a copy on write structure, use " + replacementOperation + " instead" );
+	}
 }

@@ -1,6 +1,7 @@
 package com.gushuley.collections2;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 
 public interface Collection2<E> extends Collection<E> {
@@ -71,7 +72,7 @@ public interface Collection2<E> extends Collection<E> {
 	 * @param c
 	 * @return new Collection
 	 */
-	public Collection2<E> reatain( Collection2<E> c );
+	public Collection2<E> retain( Collection2<E> c );
 
 	/***
 	 * See {@link Collection2#empty()}
@@ -98,4 +99,7 @@ public interface Collection2<E> extends Collection<E> {
 	public Stream2<? extends Collection2<E>, E> filter( Filter<E> filter );
 	
 	public <T> Stream2<? extends Collection2<T>, T> map( Transform<E, T> map);
+
+	@Override
+	Iterator2<? extends Collection<E>, E> iterator();
 }

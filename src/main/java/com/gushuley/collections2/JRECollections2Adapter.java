@@ -23,8 +23,10 @@ implements Collection2<E>{
 	}
 
 	protected UnsupportedOperationException collectionIsCopyOnWrite( String replacementOperation) throws UnsupportedOperationException {
-		 throw new UnsupportedOperationException( getClass().getSimpleName() + " is a copy on write structure, use " + replacementOperation + " instead" );
+		throw Collections2.collectionIsCopyOnWrite( getName(), replacementOperation );
 	}
+	
+	protected abstract String getName();
 
 	@Override  @Deprecated
 	public final boolean addAll( Collection<? extends E> c ) {

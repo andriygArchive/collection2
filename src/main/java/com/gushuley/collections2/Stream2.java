@@ -5,7 +5,7 @@ import java.util.Iterator;
 
 public interface Stream2<C extends Collection2<? extends E>, E> extends Iterable<E> {
 	@Override
-	public Iterator<E> iterator();
+	public Iterator2<? extends C, E> iterator();
 
 	/***
 	 * @return subset of selection

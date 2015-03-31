@@ -2,17 +2,130 @@ package com.gushuley.collections2;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 abstract class LinkedSet2<E> 
 extends JRECollections2Adapter<E> 
 implements Set2<E> 
-{ 
-	
+{
+	private static final Iterator2<? extends LinkedSet2<?>, ?> EMPTY_LINKEDSET_ITERATOR = new Iterator2<LinkedSet2<Object>, Object>() {
+		@Override
+		public boolean hasNext() {
+			return false;
+		}
+
+		@Override
+		public Object next() {
+			throw new NoSuchElementException();
+		}
+
+		@Override
+		public LinkedSet2<Object> copyFromCurrent() {
+			return emptySet();
+		}
+
+		@Override
+		public void remove() {
+			Collections2.collectionIsCopyOnWrite( "LinkedSet2.Iterator", "Set.minus" );
+		}
+	};
+
+	private static <T> Iterator2<? extends LinkedSet2<T>, T> emptyIterator() {
+		return (Iterator2<? extends LinkedSet2<T>, T>) EMPTY_LINKEDSET_ITERATOR;
+	}
+
+	private static class LinkedSet2TransformIterator<T, S>
+		implements Iterator2<LinkedSet2<T>, T>
+	{
+		private final Transform<S, T> map;
+		private LinkedSet2<S> next;
+
+		public LinkedSet2TransformIterator( LinkedSet2<S> first, Transform<S, T> map ) {
+			Objects.requireNonNull( first, "first" );
+			Objects.requireNonNull( next, "next" );
+
+			this.map = map;
+			this.next = first;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return next instanceof SetElement ;
+		}
+
+		@Override
+		public T next() {
+			if ( ! ( next instanceof SetElement ) ) {
+				throw new NoSuchElementException( "No Such Element" );
+			}
+			final SetElement<S> self = (SetElement<S>) next;
+			next = self.tail;
+			return map.transform( self.element );
+		}
+
+		@Override
+		public void remove() {
+			throw Collections2.collectionIsCopyOnWrite( "LinkedSet2", "Set2.minus" );
+		}
+
+		@Override
+		public LinkedSet2<T> copyFromCurrent() {
+			return LinkedSet2.linkedSet( new LinkedSet2TransformIterator<>( next, map ) );
+		}
+	}
+
+	public static class LinkedSet2FilteredIterator<E> implements Iterator2<LinkedSet2<E>, E> {
+		private LinkedSet2<E> next;
+		private Filter<E> filter;
+
+		public LinkedSet2FilteredIterator( LinkedSet2<E> element, Filter<E> filter ) {
+			Objects.requireNonNull( element, "element" );
+			Objects.requireNonNull( filter, "filter" );
+			this.next = element;
+			this.filter = filter;
+			
+			ensureNextIsMatchToFilter();
+		}
+		
+		private void ensureNextIsMatchToFilter() {
+			while ( next instanceof SetElement<?> && !filter.match( ( (SetElement<E>)next ).element ) ) {
+				next = ( (SetElement<E>)next ).tail;
+			}
+		}
+		
+		@Override
+		public boolean hasNext() {
+			return ( next instanceof SetElement<?> );
+		}
+
+		@Override
+		public E next() {
+			if ( !( next instanceof SetElement<?> ) ) {
+				throw new NoSuchElementException();
+			}
+
+			final SetElement<E> self = (SetElement<E>) next;
+			next = self.tail;
+			ensureNextIsMatchToFilter();
+			return self.element;
+		}
+
+		@Override
+		public void remove() {
+			Collections2.collectionIsCopyOnWrite( "LinkedSet2.Iterator", "set.minus" );
+		}
+
+		@Override
+		public LinkedSet2<E> copyFromCurrent() {
+			return LinkedSet2.linkedSet( new LinkedSet2FilteredIterator<E>( next, filter ) );
+		}
+	}
+
 	public static class EmptyLinkedSet2Stream<T> implements Stream2<LinkedSet2<T>, T> {
 		@Override
-		public Iterator<T> iterator() {
-			return Collections2.emptyIterator();
+		public Iterator2<? extends LinkedSet2<T>, T> iterator() {
+			return emptyIterator();
 		}
 
 		@Override
@@ -34,8 +147,8 @@ implements Set2<E>
 			return true;
 		}
 
-		public Iterator<E> iterator() {
-			return Collections2.emptyIterator();
+		public Iterator2<? extends Collection<E>, E> iterator() {
+			return emptyIterator();
 		}
 
 		public Object[] toArray() {
@@ -76,6 +189,11 @@ implements Set2<E>
 		@Override
 		public <T> Stream2<LinkedSet2<T>, T> map( Transform<E, T> map ) {
 			return emptyStream();
+		}
+
+		@Override
+		public String toString() {
+			return "[empty]";
 		}
 	}
 	
@@ -131,8 +249,6 @@ implements Set2<E>
 			}
 		}
 
-		
-
 		@Override
 		public boolean containValue( E item ) {
 			Objects.requireNonNull( item, "item" );
@@ -154,32 +270,113 @@ implements Set2<E>
 		}
 
 		@Override
-		public Iterator<E> iterator() {
-			return null;
+		public Iterator2<? extends LinkedSet2<E>, E> iterator() {
+			return new Iterator2<LinkedSet2<E>, E>() {
+				LinkedSet2<E> from = SetElement.this;
+
+				@Override
+				public boolean hasNext() {
+					return ( from instanceof SetElement<?> );
+				}
+
+				@Override
+				public E next() {
+					if ( !( from instanceof SetElement<?> ) ) {
+						throw new NoSuchElementException();
+					}
+					
+					final SetElement<E> self = (SetElement<E>)from;
+					from = self.tail;
+					return self.element;
+				}
+
+				@Override
+				public LinkedSet2<E> copyFromCurrent() {
+					return from;
+				}
+
+				@Override
+				public void remove() {
+					Collections2.collectionIsCopyOnWrite( "LinkSet2.Iterator", "set.minus" );
+				}
+			};
 		}
 
 		@Override
 		public Object[] toArray() {
-			// TODO Auto-generated method stub
-			return null;
+			final Object[] array = new Object[size()];
+			int i = 0;
+			for ( E e : this ) {
+				array[i] = e;
+				i ++;
+			};
+			return array;
+		}
+
+
+		@SuppressWarnings( "unchecked" )
+		@Override
+		public <T> T[] toArray( T[] array ) {
+			Objects.requireNonNull( array, "array" );
+			
+			final int size = size();
+			if ( array.length < size ) {
+				array = (T[])java.lang.reflect.Array.newInstance( array.getClass().getComponentType(), size );
+			}
+			int i = 0;
+			
+			Object[] result = array;
+			for ( E e : this ) {
+				result[i] = e;
+				i ++;
+			};
+
+			return array;
 		}
 
 		@Override
-		public <T> T[] toArray( T[] a ) {
-			// TODO Auto-generated method stub
-			return null;
-		}
+		public Stream2<LinkedSet2<E>, E> filter( final Filter<E> filter ) {
+			Objects.requireNonNull( filter, "filter" );
+			
+			return new Stream2<LinkedSet2<E>, E>() {
 
-		@Override
-		public Stream2<LinkedSet2<E>, E> filter( Filter<E> filter ) {
-			// TODO Auto-generated method stub
-			return null;
+				@Override
+				public Iterator2<? extends LinkedSet2<E>, E> iterator() {
+					return new LinkedSet2FilteredIterator<>( SetElement.this, filter );
+				}
+
+				@Override
+				public LinkedSet2<E> copyOf() {
+					return LinkedSet2.linkedSet( iterator() );
+				}
+			};
 		}
 		
 		@Override
-		public <T> Stream2<LinkedSet2<T>, T> map( Transform<E, T> map ) {
-			// TODO Auto-generated method stub
-			return null;
+		public <T> Stream2<LinkedSet2<T>, T> map( final Transform<E, T> map ) {
+			Objects.requireNonNull( map, "map" );
+
+			return new Stream2<LinkedSet2<T>, T>() {
+				@Override
+				public Iterator2<? extends LinkedSet2<T>, T> iterator() {
+					return new LinkedSet2TransformIterator<>( SetElement.this, map );
+				}
+
+				@Override
+				public LinkedSet2<T> copyOf() {
+					return LinkedSet2.linkedSet( iterator() );
+				}
+			};
+		}
+
+		@Override
+		public String toString() {
+			final StringBuilder builder = new StringBuilder( "[" );
+			for ( E element : this ) {
+				builder.append( element ).append( ", " );
+			}
+			builder.append( "]" );
+			return builder.toString();
 		}
 	}
 	
@@ -206,7 +403,7 @@ implements Set2<E>
 	}
 
 	@Override
-	public final Collection2<E> reatain( Collection2<E> c ) {
+	public final Collection2<E> retain( Collection2<E> c ) {
 		Objects.requireNonNull( c );
 		
 		LinkedSet2<E> set = emptySet();
@@ -267,5 +464,26 @@ implements Set2<E>
 	@SuppressWarnings( "unchecked" )
 	private static <T> EmptyLinkedSet2Stream<T> emptyStream() {
 		return (EmptyLinkedSet2Stream<T>)EMPTY_STREAM;
+	}
+	
+	@Override
+	protected String getName() {
+		return "LinkSet2";
+	}
+
+	@Override
+	public boolean equals( Object obj ) {
+		if ( !( obj instanceof LinkedSet2 ) ) {
+			return false;
+		}
+
+		final LinkedSet2<E> other = ( LinkedSet2<E>) obj;
+		if ( !other.minus( this ).isEmpty() ) {
+			return false;
+		}
+		if ( !this.minus( other ).isEmpty() ) {
+			return false;
+		}
+		return true;
 	}
 }

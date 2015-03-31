@@ -4,6 +4,12 @@ import java.util.Collection;
 import java.util.Set;
 
 public interface Set2<E> extends Collection2<E>, Set<E> {
+	@Override @Deprecated
+	boolean add( E e );
+
+	@Override @Deprecated
+	boolean addAll( Collection<? extends E> c );
+
 	@Override
 	public Set2<E> plus( Collection<? extends E> c );
 	
