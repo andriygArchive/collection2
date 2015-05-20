@@ -4,19 +4,12 @@
 
 package com.gushuley.collections2.tests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+import static org.testng.Assert.*;
 import java.util.Iterator;
 
-import org.junit.Test;
-
-import com.gushuley.collections2.Collection2;
 import com.gushuley.collections2.Collections2;
 import com.gushuley.collections2.Set2;
+import org.testng.annotations.Test;
 
 public class Set2Test {
 
